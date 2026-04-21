@@ -1,4 +1,4 @@
-# Introduction
+# Votesly
 # Features
 # Demo Visual
 # System Design
