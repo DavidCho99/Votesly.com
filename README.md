@@ -1,6 +1,5 @@
 # Votesly.com (SchoolRankingApp)
-
-GridironVote is a real-time College Football Fan Support Ranking application. It allows users to vote for their favorite university sports teams and see the leaderboard update instantly across all connected clients.
+Votesly is a real-time College Football Fan Support Ranking application. It allows users to vote for their favorite university sports teams and see the leaderboard update instantly across all connected clients.
 
 ## 🚀 Key Features
 
