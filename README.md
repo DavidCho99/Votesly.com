@@ -1,89 +1,65 @@
 # Votesly.com (SchoolRankingApp)
-Votesly is a real-time College Football Fan Support Ranking application. It allows users to vote for their favorite university sports teams and see the leaderboard update instantly across all connected clients.
+### High-Concurrency Real-Time Ranking Engine with Zero-Hang Architecture
 
-## 🚀 Key Features
+**Votesly** is a high-performance polling platform for College Football, engineered with a focus on real-time data consistency and system resilience. 
+---
 
-*   **Real-time Leaderboard:** Rankings and vote counts update live for all users without requiring a page refresh.
-*   **Instant Feedback (Optimistic UI):** When you vote, the UI instantly increments with a satisfying "Pop" animation, while server synchronizations happen perfectly in the background.
-*   **Dynamic Re-sorting:** Team cards smoothly slide up and down the leaderboard as their rankings change.
-*   **Zero-Hang Architecture:** Built to handle high-frequency clicks. Backend rate-limiting and a robust database fallback mechanism ensure the app never freezes, even if the Redis cache becomes temporarily unavailable.
-*   **Hybrid Access Control:** The leaderboard is public, but voting requires authentication, protecting against spam while maximizing visibility.
+## 🏗️ 1. Architectural Principles & Implementation
 
-## 🛠️ Technology Stack
+The system is partitioned into four critical layers, mirroring the separation of concerns found in large-scale production environments.
 
-*   **Frontend:** Next.js (App Router), React, Tailwind CSS, Framer Motion, TanStack Query (@tanstack/react-query).
-*   **Backend:** NestJS, TypeScript, TypeORM.
-*   **Database:** PostgreSQL (Supabase), Redis (Upstash) for caching and rate-limiting.
-*   **Real-time Communication:** Server-Sent Events (SSE).
+### **I. Frontend: Optimistic UI & Reactive State**
+*   **Layered UI Components:** Built using **Next.js 14 (App Router)**, separating low-level "Base" primitives from "Workbench" domain-specific components (e.g., `MatchupCard`, `Leaderboard`).
+*   **Optimistic UI Pattern:** Leveraging **TanStack Query**, the system implements optimistic updates. On user interaction, the UI reflects the state change at **0ms latency**, while the server synchronization handles the eventual consistency in the background.
+*   **Motion Engineering:** Uses **Framer Motion** for layout-level animations, ensuring smooth re-ordering of ranked elements as live data streams in.
 
-## 📈 Development Phases & Steps Accomplished
+### **II. Backend: Modular Micro-services**
+*   **Inversion of Control (IoC):** Built on **NestJS**, utilizing dependency injection to decouple `Auth`, `Teams`, and `Ranking` modules.
+*   **Database Optimization:** Interfaced via **TypeORM** with PostgreSQL. Implemented SQL-level optimizations, including case-insensitive indexing (`LOWER()`) and relational integrity with cascading constraints.
+*   **Validation & Serialization:** Strict schema enforcement using **DTOs** and **Class-Validators** to ensure data hygiene at the edge.
 
-The project was developed and optimized in the following distinct phases:
+### **III. Identity: Secure & Domain-Specific Auth**
+*   **Passwordless Auth (OTP):** Implemented a 6-digit One-Time Password (OTP) flow via **Supabase Auth** to minimize friction and eliminate password-related security risks.
+*   **Advanced Ingress Filtering:** Dual-layer guardrails (Client + Server-side Guards) restrict registration to specific educational domains (e.g., `.edu`), ensuring community integrity.
+*   **Reactive Auth Listeners:** A global `onAuthStateChange` listener manages the user lifecycle, handling complex edge cases like password recovery redirects and session hydration.
 
-### Phase 1: Architecture Research & SSE Migration
-*   Explored real-time architectures handling high-frequency interactions (like popsenzawa/echo).
-*   Migrated from heavy WebSocket (Socket.io) implementations to lightweight, unidirectional **Server-Sent Events (SSE)**.
-*   Implemented `RankingsController` and refactored `TeamsService` to push broadcast events.
-*   Created a native frontend hook (`useRankings`) to consume the SSE stream efficiently.
+### **IV. Resilience: The "Zero-Hang" Strategy**
+*   **Real-time Streaming:** Utilizes **Server-Sent Events (SSE)** for lightweight, unidirectional data broadcasting, significantly reducing server overhead compared to traditional WebSockets.
+*   **Fault-Tolerant Caching:** A Redis-first write-back strategy is implemented. If the Redis cache fails, the system executes a **Circuit Breaker**-style fallback directly to PostgreSQL, ensuring 100% uptime (Zero-Hang).
+*   **PKCE Flow Integration:** Resolved race conditions between Next.js server-side rendering and Supabase PKCE authentication flows through conditional rendering and token-detection logic.
 
-### Phase 2: Voting Functionality & Resilience
-*   Wired up the frontend vote buttons to the NestJS backend (`POST /teams/:id/vote`).
-*   Implemented a 5-second cooldown/rate-limit using Redis.
-*   Built a **"Zero-Hang" fallback mechanism**: If Redis fails, the system immediately falls back to direct PostgreSQL writes, ensuring the app never goes down.
-*   Fixed request hanging issues by disabling Redis command buffering.
+---
 
-### Phase 3: Instant UI Feedback & Polish
-*   Integrated TanStack Query with the SSE stream for seamless data synchronization.
-*   Implemented **Optimistic Updates**: The UI updates instantly upon user click, deducting local pending votes when the server broadcast arrives to prevent double-counting.
-*   Added `framer-motion` layout animations for smooth team card re-sorting.
-*   Implemented a 5-second background auto-polling fallback to guarantee 100% data consistency.
-*   Separated complex touch gesture logic (pull-to-refresh) into a custom React hook for better Separation of Concerns.
+## 🛠️ 2. Technical Stack
 
-### Phase 4: Data Persistence & Security
-*   Transitioned from simple aggregate counts to persisting individual vote records in the `user_likes` table, maintaining a complete history of user interactions with a cascading delete constraint.
-*   Implemented Hybrid Page Access Control:
-    *   `/rankings` (Public view, read-only for guests).
-    *   `/Support` (Private view, redirects to login).
+| Domain           | Technology                                                  |
+| :--------------- | :---------------------------------------------------------- |
+| **Frontend**     | **Next.js 14**, Tailwind CSS, Framer Motion, TanStack Query |
+| **Backend**      | **NestJS**, TypeORM, Passport.js (JWT)                      |
+| **Data & Cache** | **Supabase (PostgreSQL)**, Redis (Upstash)                  |
+| **Languages**    | TypeScript                                                  |
+| **DevOps**       | Vercel (CDNX), Railway (Containerized Backend)              |
 
-## 💻 Getting Started (Local Development)
+---
 
-### Frontend (Next.js)
-```bash
-cd frontend
-npm install
-npm run dev
-# Runs on http://localhost:3000
-```
+## 📂 3. Source Code Organization (VS Code Standard)
 
-### Backend (NestJS)
-```bash
-cd backend
-npm install
-# Ensure .env is populated with DATABASE_URL, REDIS_URL, etc.
-npm run start:dev
-# Runs on http://localhost:3001
-```
+Following the **VS Code Wiki guidelines**, the repository is organized by target runtime and contribution scope:
 
-## 📅 Recent Updates
+*   **`src/vs/common/`**: Shared interfaces and DTOs used by both the Node.js backend and the Browser client.
+*   **`src/vs/platform/`**: Core infrastructure services (Database, Redis, Logger) shared across all modules.
+*   **Standardized Naming**: Strictly enforced lowercase routing and kebab-case file naming for cross-platform compatibility and SEO.
 
-### **February 27, 2026**
+---
 
-**1. Next.js App Router Refactoring**
-*   **What:** Analyzed the directory tree and renamed all capitalized route folders (e.g., `Login`, `Profile`, `Support`, `Onboarding` etc.) to their lowercase equivalents (`login`, `profile`, `support`).
-*   **Why:** To strictly adhere to Next.js App Router standard conventions, which favor lowercase URLs and folder names for consistency and SEO.
+## 🔄 4. System Flow Lifecycle
 
-**2. Dead Code Elimination**
-*   **What:** Completely removed the deprecated `Onboarding` directory (`src/app/Onboarding`) and cleanly stripped out all associated client/server-side logic, routing steps, and redirects.
-*   **Why:** The onboarding flow for nickname creation was deactivated. Removing the dead code reduces bundle size, eliminates confusion, and streamlines the authentication journey.
+1.  **Event Ingress:** User triggers a vote.
+2.  **Optimistic Execution:** Client UI updates immediately; request sent to NestJS.
+3.  **Distributed Locking & Validation:** Server validates the session and checks Redis for rate-limiting.
+4.  **Resilient Persistence:** Data is committed to Redis. In case of downtime, the system falls back to the RDBMS (PostgreSQL).
+5.  **Global Broadcast:** Updated rankings are pushed to all active clients via **SSE**, triggering a layout-level re-render across the platform.
 
-**3. Hard Account Deletion (Supabase Integration)**
-*   **What:** Fixed an account deletion edge case where destroying an account only dropped the user from the application's `public.users` table but orphaned their identity in the Supabase Authentication system (`auth.users`).
-*   **Why:** True "hard deletion" was restored by securely implementing the Supabase Admin API (`supabaseAdmin.auth.admin.deleteUser`) invoked inside a backend TypeORM transaction via the `SUPABASE_SERVICE_ROLE_KEY`.
+---
 
-**4. Custom SMTP & Email Templates**
-*   **What:** Successfully configured **Resend** as the custom SMTP provider for Supabase Auth, migrating off the rate-limited built-in mailer. Additionally, built and attached cleanly formatted, responsive HTML email templates for the "Confirm Signup" and "Reset Password" triggered workflows.
-*   **Why:** To dramatically improve deliverability (preventing confirmation emails from going to spam) and deliver a premium, branded email UX.
-
-**5. ReScript Organization & Component Review**
-*   **What:** Audited project components and segregated ReScript logic. Migrated scattered `.res` and compiled `.res.js` files out of Typescript standard `hooks/` and `lib/` and into a dedicated `src/rescript/` isolated architecture.
-*   **Why:** This clean separation avoids mixing functional ReScript output with the primary TypeScript environment, drastically improving repo navigability.
+> **Note on Implementation:** This architecture prioritizes **Causal Interpretability** and **System Integrity** over simple batching techniques, ensuring every vote is accounted for and verifiable in real-time.
