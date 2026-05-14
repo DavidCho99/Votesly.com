@@ -60,6 +60,4 @@ Following the **VS Code Wiki guidelines**, the repository is organized by target
 4.  **Resilient Persistence:** Data is committed to Redis. In case of downtime, the system falls back to the RDBMS (PostgreSQL).
 5.  **Global Broadcast:** Updated rankings are pushed to all active clients via **SSE**, triggering a layout-level re-render across the platform.
 
----
 
-> **Note on Implementation:** This architecture prioritizes **Causal Interpretability** and **System Integrity** over simple batching techniques, ensuring every vote is accounted for and verifiable in real-time.
